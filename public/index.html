@@ -1,0 +1,3056 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nexus SaaS | Control Center Pro</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="/socket.io/socket.io.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;700;800&display=swap" rel="stylesheet" />
+
+    <style>
+                body {
+            font-family: 'Assistant', sans-serif;
+            color: #e2e8f0;
+            background:
+                radial-gradient(900px 520px at 15% -10%, rgba(59, 130, 246, 0.18), transparent 60%),
+                radial-gradient(750px 420px at 90% 0%, rgba(168, 85, 247, 0.14), transparent 55%),
+                radial-gradient(900px 520px at 40% 110%, rgba(16, 185, 129, 0.08), transparent 60%),
+                linear-gradient(180deg, #050713, #070A14 55%, #050713);
+            min-height: 100vh;
+        }
+
+        :root {
+            --ease-premium: cubic-bezier(0.2, 0.8, 0.2, 1);
+            --shadow-soft: 0 16px 40px rgba(0, 0, 0, 0.30);
+            --shadow-premium: 0 24px 70px rgba(0, 0, 0, 0.42);
+            --shadow-blue: 0 18px 45px rgba(37, 99, 235, 0.35);
+            --ring-soft: 0 0 0 1px rgba(148, 163, 184, 0.10);
+        }
+
+        /* Dark premium glass */
+        .glass {
+            background: rgba(2, 6, 23, 0.60);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            box-shadow: var(--ring-soft);
+        }
+
+
+                /* Premium layered glass (cards) */
+        .glass-card {
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--shadow-soft);
+            transition: transform 220ms var(--ease-premium), box-shadow 220ms var(--ease-premium);
+        }
+
+        .glass-card::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background:
+                radial-gradient(900px 380px at 12% 0%, rgba(59, 130, 246, 0.20), transparent 60%),
+                radial-gradient(700px 280px at 88% 10%, rgba(168, 85, 247, 0.14), transparent 55%),
+                linear-gradient(to bottom, rgba(255,255,255,0.07), rgba(255,255,255,0.02));
+            opacity: 0.95;
+        }
+
+        .glass-card::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            border-radius: inherit;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.10);
+            opacity: 0.95;
+        }
+
+
+        .glass-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-premium);
+        }
+
+        .glass-card:hover::before {
+            opacity: 1;
+        }
+
+        .sidebar-item {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sidebar-item.active {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: white;
+            box-shadow: var(--shadow-blue);
+        }
+
+        .sidebar-item.active::after {
+            content: "";
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            width: 6px;
+            height: 28px;
+            transform: translateY(-50%);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.85);
+            box-shadow: 0 8px 20px rgba(255,255,255,0.15);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: slideUp 0.4s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+                .modal-animate {
+            animation: modalIn 0.25s var(--ease-premium);
+        }
+
+        /* Premium in animations */
+        .card-enter {
+            animation: cardIn 420ms var(--ease-premium) both;
+        }
+
+        @keyframes cardIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+                filter: blur(2px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+                filter: blur(0);
+            }
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            margin-left: 8px;
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.0);
+        }
+
+        .status-dot.connected {
+            background: #10b981;
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.35);
+            animation: pulseDot 1.8s var(--ease-premium) infinite;
+        }
+
+        .status-dot.pending {
+            background: #f59e0b;
+            box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.25);
+            animation: pulseDotAmber 2.2s var(--ease-premium) infinite;
+        }
+
+        @keyframes pulseDot {
+            0% { box-shadow: 0 0 0 0 rgba(16,185,129,0.35); }
+            70% { box-shadow: 0 0 0 10px rgba(16,185,129,0); }
+            100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+        }
+
+        @keyframes pulseDotAmber {
+            0% { box-shadow: 0 0 0 0 rgba(245,158,11,0.28); }
+            70% { box-shadow: 0 0 0 10px rgba(245,158,11,0); }
+            100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); }
+        }
+
+                .skeleton {
+            position: relative;
+            overflow: hidden;
+            background: rgba(148, 163, 184, 0.10);
+            border-radius: 1rem;
+        }
+
+        .skeleton::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            transform: translateX(-100%);
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.10), transparent);
+            animation: shimmer 1.25s linear infinite;
+        }
+
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+                @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .toast-animate {
+            animation: toastIn 0.22s ease-out;
+        }
+
+                @keyframes toastIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Premium scrollbars */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.04);
+            border-radius: 999px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.22);
+            border-radius: 999px;
+            border: 2px solid rgba(2, 6, 23, 0.65);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(148, 163, 184, 0.34);
+        }
+
+        /* Compact density (optional) */
+        html.premium-compact #biz-grid {
+            gap: 1.25rem;
+        }
+
+        html.premium-compact .glass-card {
+            box-shadow: 0 14px 34px rgba(0,0,0,0.34);
+        }
+    </style>
+</head>
+
+<body class="flex min-h-screen">
+
+    <!-- SIDEBAR (desktop) -->
+    <aside class="hidden md:block w-80 glass text-slate-200 p-8 fixed right-0 top-0 h-full z-50 shadow-2xl">
+
+        <div class="flex items-center gap-4 mb-12 px-2">
+            <div class="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <i data-lucide="zap" class="text-white"></i>
+            </div>
+
+            <span class="text-2xl font-black text-white tracking-tighter uppercase">
+                Nexus<span class="text-blue-500">SaaS</span>
+            </span>
+        </div>
+
+        <nav class="space-y-4">
+
+            <button
+                onclick="switchTab('biz')"
+                id="btn-biz"
+                class="sidebar-item active w-full p-4 rounded-2xl flex items-center gap-4 font-bold transition-all">
+
+                <i data-lucide="layout-grid"></i>
+                ניהול עסקים
+            </button>
+
+                        <button
+                onclick="switchTab('bookings')"
+                id="btn-bookings"
+                class="sidebar-item w-full p-4 rounded-2xl flex items-center gap-4 font-bold transition-all hover:bg-slate-800">
+
+                <i data-lucide="calendar"></i>
+                יומן תורים
+            </button>
+
+            <button
+                onclick="switchTab('chat')"
+                id="btn-chat"
+                class="sidebar-item w-full p-4 rounded-2xl flex items-center gap-4 font-bold transition-all hover:bg-slate-800">
+
+                <i data-lucide="messages-square"></i>
+                מרכז שיחות
+            </button>
+
+        </nav>
+
+    </aside>
+
+    <!-- MOBILE NAV (bottom) -->
+    <nav class="md:hidden fixed bottom-4 left-4 right-4 z-[80]">
+        <div class="glass px-3 py-2 rounded-[2.2rem] border border-white/10 shadow-2xl shadow-black/40">
+            <div class="grid grid-cols-3 gap-2">
+                <button id="m-btn-biz" onclick="switchTab('biz')" class="mobile-nav-item px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-black flex items-center justify-center gap-2">
+                    <i data-lucide="layout-grid" class="w-5 h-5"></i>
+                    עסקים
+                </button>
+                <button id="m-btn-bookings" onclick="switchTab('bookings')" class="mobile-nav-item px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-black flex items-center justify-center gap-2">
+                    <i data-lucide="calendar" class="w-5 h-5"></i>
+                    תורים
+                </button>
+                <button id="m-btn-chat" onclick="switchTab('chat')" class="mobile-nav-item px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-black flex items-center justify-center gap-2">
+                    <i data-lucide="messages-square" class="w-5 h-5"></i>
+                    Inbox
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- MAIN -->
+    <main class="flex-1 mr-0 md:mr-80 p-6 pb-28 md:pb-12 md:p-12">
+
+        <!-- PREMIUM NAVBAR -->
+        <div class="sticky top-0 z-40 -mx-6 md:-mx-12 mb-8">
+            <div class="glass px-6 md:px-12 py-4 border-b border-white/10">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div class="flex items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                                <i data-lucide="zap" class="text-white"></i>
+                            </div>
+                            <div>
+                                <div class="text-sm font-black text-white tracking-tight">Nexus SaaS</div>
+                                <div class="text-xs font-bold text-slate-400">Realtime WhatsApp Control Center</div>
+                            </div>
+                        </div>
+
+                        <button
+                            onclick="document.documentElement.classList.toggle('premium-compact'); render();"
+                            class="hidden sm:flex px-3 py-2 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-black text-slate-200 transition-all">
+                            תצוגה צפופה
+                        </button>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row gap-3 sm:items-center">
+                        <div class="glass px-4 py-3 rounded-2xl border border-white/10 flex items-center gap-3">
+                            <i data-lucide="activity" class="w-4 h-4 text-emerald-400"></i>
+                            <span class="text-xs font-black text-slate-200">מערכת פעילה</span>
+                            <span class="text-xs font-bold text-slate-400">Realtime</span>
+                        </div>
+
+                        <button
+                            onclick="loadBusinesses()"
+                            class="px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all flex items-center gap-2 font-black text-sm text-slate-100">
+                            <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+                            רענון
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <header class="flex flex-col lg:flex-row lg:justify-between lg:items-end gap-6 mb-10">
+
+            <div>
+                                <h1 id="page-title" class="text-4xl font-black text-white tracking-tight">
+                    ניהול עסקים
+                </h1>
+
+                <p class="text-slate-400 mt-2 text-lg font-bold">
+                    Control Center Pro — חווית SaaS בזמן אמת
+                </p>
+            </div>
+
+            <div class="flex gap-4">
+
+                                <button
+                    onclick="loadBookings()"
+                    class="p-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all shadow-sm">
+
+                    <i data-lucide="refresh-cw" class="w-6 h-6 text-slate-200"></i>
+                </button>
+
+                <button
+                    onclick="addBusiness()"
+                    class="bg-gradient-to-br from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-8 py-4 rounded-2xl shadow-xl shadow-blue-500/20 flex items-center gap-3 font-black transition-all transform hover:scale-[1.02] active:scale-[0.99]">
+
+                    <i data-lucide="plus"></i>
+                    הוספת עסק
+                </button>
+
+            </div>
+
+        </header>
+
+                <!-- BUSINESS TAB -->
+        <div id="tab-biz" class="tab-content active">
+
+            <!-- PREMIUM HERO -->
+            <div class="glass glass-card p-8 md:p-10 rounded-[3.2rem] mb-10 border border-white/10">
+                <div class="relative z-10">
+                    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                        <div>
+                            <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-black text-slate-200">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400" style="box-shadow: 0 0 0 6px rgba(16,185,129,0.12)"></span>
+                                Realtime WhatsApp SaaS
+                            </div>
+                            <h2 class="text-3xl md:text-4xl font-black text-white tracking-tight mt-4">
+                                בניתם בוט שעובד. עכשיו בונים מוצר פרימיום.
+                            </h2>
+                            <p class="text-slate-300 font-bold mt-3 max-w-2xl leading-relaxed">
+                                ניהול עסקים, חיבור WhatsApp, Inbox בזמן אמת, ומצב BOT/MANUAL — הכל באותו Control Center.
+                            </p>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <button
+                                onclick="addBusiness()"
+                                class="px-6 py-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-black transition-all">
+                                <i data-lucide="plus" class="w-5 h-5 inline-block ml-2"></i>
+                                הוסף עסק חדש
+                            </button>
+
+                            <button
+                                onclick="switchTab('chat');"
+                                class="px-6 py-4 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black shadow-xl shadow-blue-500/20 transition-all">
+                                <i data-lucide="messages-square" class="w-5 h-5 inline-block ml-2"></i>
+                                פתח Chat Center
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="biz-grid" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8"></div>
+        </div>
+
+                <!-- CHAT TAB -->
+        <div id="tab-chat" class="tab-content">
+
+            <div class="glass p-8 rounded-[3rem] border border-white/10">
+
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+
+                    <div>
+                                                <h2 class="text-2xl font-black text-white">מרכז שיחות</h2>
+                        <p class="text-slate-300 font-bold mt-1 text-sm">
+                            שיחות בזמן אמת • תגובות ידניות • מצב בוט/ידני
+                        </p>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row gap-3 sm:items-center">
+                        <select
+                            id="chatBusinessSelect"
+                            class="px-4 py-3 rounded-2xl bg-white/5 border border-white/10 font-black text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">בחר עסק</option>
+                        </select>
+
+                        <button
+                            onclick="refreshChat()"
+                            class="p-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all shadow-sm flex items-center gap-2 font-black text-slate-100">
+
+                            <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+                            רענון
+                        </button>
+                    </div>
+
+                </div>
+
+                <div class="flex flex-col lg:flex-row gap-6">
+
+                    <div class="w-full lg:w-[380px] glass p-4 rounded-[2.5rem] border border-white/10">
+                        <div class="flex items-center justify-between px-2 py-2">
+                                                        <div class="text-xs font-black text-slate-400 uppercase tracking-wider">Inbox</div>
+                            <div id="chatConvoMeta" class="text-xs font-bold text-slate-400"></div>
+                        </div>
+                        <div id="chatConversationsList" class="mt-2 space-y-2 max-h-[65vh] overflow-auto pr-1"></div>
+                    </div>
+
+                    <div class="flex-1 glass p-6 rounded-[2.5rem] border border-white/10 flex flex-col min-h-[65vh]">
+
+                        <div id="chatHeader" class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-white/10">
+                            <div>
+                                                                <div id="chatHeaderTitle" class="text-lg font-black text-white">בחר שיחה</div>
+                                <div id="chatHeaderSubtitle" class="text-xs font-bold text-slate-400 mt-1"></div>
+                            </div>
+
+                            <div class="flex gap-2 items-center">
+                                <button
+                                    id="chatModeBtn"
+                                    onclick="toggleConversationMode()"
+                                    class="px-4 py-2 rounded-2xl font-black text-xs bg-slate-900 text-white hover:bg-black transition-all disabled:opacity-50"
+                                    disabled>
+                                    מצב: BOT
+                                </button>
+
+                                <button
+                                    id="chatMarkReadBtn"
+                                    onclick="markActiveConversationRead()"
+                                    class="px-4 py-2 rounded-2xl font-black text-xs bg-white/5 border border-white/10 text-slate-100 hover:bg-white/10 transition-all disabled:opacity-50"
+                                    disabled>
+                                    סמן כנקרא
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="chatMessages" class="flex-1 mt-5 space-y-3 overflow-auto pr-1"></div>
+
+                        <div class="mt-5 pt-4 border-t border-white/10">
+                            <div class="flex gap-3">
+                                <input
+                                    id="chatInput"
+                                    type="text"
+                                    placeholder="כתוב הודעה..."
+                                    class="flex-1 px-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-white font-black placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+
+                                <button
+                                    id="chatSendBtn"
+                                    onclick="sendChatMessage()"
+                                    class="px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl shadow-xl font-black transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                                    שלח
+                                </button>
+                            </div>
+
+                                                        <div class="text-xs font-bold text-slate-400 mt-3">
+                                טיפ: מצב <span class="text-slate-200">MANUAL</span> עוצר את הבוט ומאפשר מענה ידני מהדשבורד.
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- BOOKINGS TAB -->
+        <div id="tab-bookings" class="tab-content">
+
+            <div class="glass p-10 rounded-[3rem] border border-white/10">
+
+                <div class="overflow-hidden">
+
+                    <table class="w-full text-right">
+
+                        <thead>
+
+                            <tr class="text-slate-400 border-b border-white/10 uppercase text-xs font-black tracking-widest">
+                                <th class="pb-4">לקוח</th>
+                                <th class="pb-4">מועד תור</th>
+                                <th class="pb-4">עסק</th>
+                                <th class="pb-4 text-left">נוצר ב-</th>
+                            </tr>
+
+                        </thead>
+
+                        <tbody id="bookings-table-body" class="divide-y divide-white/5"></tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </main>
+
+        <!-- WHATSAPP ONBOARDING MODAL (QR + Phone guided UX) -->
+    <div id="qrModal" class="hidden fixed inset-0 bg-slate-950/80 flex items-center justify-center z-[100] backdrop-blur-2xl">
+
+        <div class="glass p-8 md:p-10 rounded-[3.5rem] shadow-2xl w-[min(560px,92vw)] text-right relative border border-white/10 modal-animate">
+
+            <button
+                onclick="closeQR()"
+                class="absolute top-8 left-8 text-slate-400 hover:text-white transition-colors">
+
+                <i data-lucide="x" class="w-8 h-8"></i>
+            </button>
+
+            <div class="flex items-start justify-between gap-6">
+                <div>
+                    <h2 id="qrTitle" class="text-2xl md:text-3xl font-black text-white mb-1">
+                        חיבור WhatsApp
+                    </h2>
+                    <p class="text-slate-400 font-bold text-sm">
+                        Setup פרימיום • יציב • בזמן אמת
+                    </p>
+                </div>
+
+                <div id="waStatusPill" class="px-3 py-1.5 rounded-full text-[11px] font-black border border-white/10 bg-white/5 text-slate-200">
+                    מצב: ממתין
+                </div>
+            </div>
+
+            <!-- Steps -->
+            <div class="mt-7">
+                <div id="waSteps" class="grid grid-cols-4 gap-2 text-[11px] font-black text-slate-400">
+                    <div id="waStepDot_method" class="glass px-3 py-2 rounded-2xl border border-white/10 text-center">1 • בחירה</div>
+                    <div id="waStepDot_phone" class="glass px-3 py-2 rounded-2xl border border-white/10 text-center">2 • מספר</div>
+                    <div id="waStepDot_qr" class="glass px-3 py-2 rounded-2xl border border-white/10 text-center">3 • QR</div>
+                    <div id="waStepDot_done" class="glass px-3 py-2 rounded-2xl border border-white/10 text-center">4 • מוכן</div>
+                </div>
+            </div>
+
+            <!-- METHOD STEP -->
+            <div id="waStep_method" class="mt-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button
+                        onclick="waChooseMethod('qr')"
+                        class="glass glass-card p-6 rounded-[2.5rem] border border-white/10 text-right hover:shadow-2xl transition-all">
+                        <div class="relative z-10">
+                            <div class="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
+                                <i data-lucide="qr-code" class="w-6 h-6 text-slate-100"></i>
+                            </div>
+                            <div class="mt-4 text-lg font-black text-white">התחברות עם QR</div>
+                            <div class="text-sm font-bold text-slate-400 mt-1">מהיר ומדויק — סריקה אחת והכל מחובר.</div>
+                        </div>
+                    </button>
+
+                    <button
+                        onclick="waChooseMethod('phone')"
+                        class="glass glass-card p-6 rounded-[2.5rem] border border-white/10 text-right hover:shadow-2xl transition-all">
+                        <div class="relative z-10">
+                            <div class="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
+                                <i data-lucide="phone" class="w-6 h-6 text-slate-100"></i>
+                            </div>
+                            <div class="mt-4 text-lg font-black text-white">התחברות עם מספר</div>
+                            <div class="text-sm font-bold text-slate-400 mt-1">זרימה מודרכת — נתחיל עם אימות מספר ואז נמשיך ל־QR.</div>
+                            <div class="text-[11px] font-black text-slate-500 mt-3">הערה: WhatsApp Web דורש QR. זהו UX פרימיום סביב הזרימה הקיימת.</div>
+                        </div>
+                    </button>
+                </div>
+
+                <div class="mt-6 flex flex-col sm:flex-row gap-3">
+                    <button
+                        onclick="waChooseMethod('qr')"
+                        class="flex-1 px-5 py-4 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black shadow-xl shadow-blue-500/20 transition-all">
+                        המשך עם QR
+                    </button>
+                    <button
+                        onclick="closeQR()"
+                        class="flex-1 px-5 py-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-black transition-all">
+                        סגור
+                    </button>
+                </div>
+            </div>
+
+            <!-- PHONE STEP -->
+                        <div id="waStep_phone" class="mt-8 hidden">
+                <div class="glass p-6 rounded-[2.5rem] border border-white/10">
+
+                    <div id="waPhoneForm">
+                        <div class="text-sm font-black text-white">הזן מספר טלפון</div>
+                        <div class="text-sm font-bold text-slate-400 mt-1">לצורך זיהוי וארגון תהליך ההתחברות. בשלב הבא תתבצע סריקת QR.</div>
+
+                        <div class="mt-5 flex gap-3">
+                            <input
+                                id="waPhoneInput"
+                                type="tel"
+                                dir="ltr"
+                                placeholder="05X-XXXXXXX"
+                                class="flex-1 px-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-white font-black placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                            <button
+                                onclick="waContinuePhone()"
+                                class="px-6 py-4 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black transition-all">
+                                המשך
+                            </button>
+                        </div>
+
+                        <div id="waPhoneError" class="hidden mt-4 bg-red-500/10 border border-red-500/20 text-red-200 px-4 py-3 rounded-2xl text-sm font-bold"></div>
+                    </div>
+
+                    <div id="waPhoneVerify" class="hidden">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
+                                <svg class="animate-spin h-6 w-6 text-slate-200" viewBox="0 0 24 24" fill="none">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <div class="text-sm font-black text-white">מאמת מספר…</div>
+                                <div class="text-sm font-bold text-slate-400 mt-1">מכינים את סביבת ההתחברות וה־QR</div>
+                            </div>
+                        </div>
+
+                        <div class="mt-5 h-2 rounded-full bg-white/5 border border-white/10 overflow-hidden">
+                            <div class="h-full w-2/3 bg-gradient-to-r from-blue-500 to-indigo-500" style="animation: shimmer 1.1s linear infinite"></div>
+                        </div>
+                    </div>
+
+                </div>
+
+
+                <div class="mt-6 flex gap-3">
+                    <button
+                        onclick="waBack()"
+                        class="flex-1 px-5 py-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-black transition-all">
+                        חזור
+                    </button>
+                    <button
+                        onclick="waChooseMethod('qr')"
+                        class="flex-1 px-5 py-4 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black shadow-xl shadow-blue-500/20 transition-all">
+                        דלג ל־QR
+                    </button>
+                </div>
+            </div>
+
+            <!-- QR STEP -->
+                        <div id="waStep_qr" class="mt-8 hidden">
+                <div class="glass p-6 rounded-[2.5rem] border border-white/10">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <div id="waQrTitle" class="text-sm font-black text-white">סרוק את ה־QR</div>
+                            <div id="waQrSubtitle" class="text-sm font-bold text-slate-400 mt-1">פתח WhatsApp → Linked devices → Link a device</div>
+                        </div>
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <button
+                                id="waUseQrBtn"
+                                onclick="waSwitchToQr()"
+                                class="hidden px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-black transition-all">
+                                השתמש ב־QR
+                            </button>
+                            <button
+                                id="waRefreshQrBtn"
+                                onclick="waRefreshQr()"
+                                class="px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-black transition-all flex items-center gap-2">
+                                <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                                רענון
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Pairing code (mobile-friendly) -->
+                    <div id="waPairingPanel" class="hidden mt-6 glass p-6 rounded-[2.5rem] border border-white/10">
+                        <div class="text-sm font-black text-white">קוד צימוד (Pairing Code)</div>
+                        <div class="text-sm font-bold text-slate-400 mt-1">
+                            בטלפון שלך: WhatsApp → Settings → Linked Devices → Link a device → <span class="text-slate-200">Link with phone number</span>
+                        </div>
+
+                        <div class="mt-5 flex items-center justify-between gap-4">
+                            <div class="flex-1">
+                                <div class="text-xs font-black text-slate-400 uppercase tracking-wider">הקוד שלך</div>
+                                <div id="waPairingCodeText" class="mt-2 text-3xl md:text-4xl font-black text-white tracking-[0.18em]" dir="ltr">—</div>
+                                <div id="waPairingPhoneText" class="text-xs font-bold text-slate-500 mt-2" dir="ltr"></div>
+                            </div>
+                            <div class="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
+                                <i data-lucide="link" class="w-6 h-6 text-slate-100"></i>
+                            </div>
+                        </div>
+
+                        <div class="mt-5 text-xs font-bold text-slate-500">
+                            לאחר הזנת הקוד, החיבור יתבצע אוטומטית והמערכת תציג “מחובר”.
+                        </div>
+                    </div>
+
+                    <div
+                        id="qrBox"
+                        class="mt-6 bg-white/5 aspect-square rounded-[3rem] flex items-center justify-center border border-white/10 p-8">
+                    </div>
+                </div>
+
+
+                <div class="mt-6 flex gap-3">
+                    <button
+                        onclick="waBack()"
+                        class="flex-1 px-5 py-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-black transition-all">
+                        חזור
+                    </button>
+                    <button
+                        onclick="closeQR()"
+                        class="flex-1 px-5 py-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-black transition-all">
+                        סגור
+                    </button>
+                </div>
+            </div>
+
+            <!-- SUCCESS STEP -->
+            <div id="waStep_done" class="mt-8 hidden">
+                <div class="glass p-8 rounded-[2.5rem] border border-emerald-500/20 bg-emerald-500/5">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                            <i data-lucide="check" class="w-7 h-7 text-emerald-300"></i>
+                        </div>
+                        <div>
+                            <div class="text-lg font-black text-white">מחובר בהצלחה</div>
+                            <div class="text-sm font-bold text-slate-300 mt-1">המערכת מוכנה לקבל ולשלוח הודעות בזמן אמת.</div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex gap-3">
+                        <button
+                            onclick="closeQR()"
+                            class="flex-1 px-6 py-4 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-black shadow-xl shadow-emerald-500/20 transition-all">
+                            סגור
+                        </button>
+                        <button
+                            onclick="switchTab('chat'); closeQR();"
+                            class="flex-1 px-6 py-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-black transition-all">
+                            עבור ל־Inbox
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- BUSINESS MODAL -->
+        <div id="businessModal" class="hidden fixed inset-0 bg-slate-950/80 flex items-center justify-center z-[100] backdrop-blur-2xl">
+
+        <div class="glass p-10 rounded-[3rem] shadow-2xl w-[min(520px,92vw)] relative border border-white/10 modal-animate">
+
+            <button
+                                onclick="closeBusinessModal()"
+                class="absolute top-8 left-8 text-slate-400 hover:text-white transition-colors">
+
+                <i data-lucide="x" class="w-7 h-7"></i>
+            </button>
+
+            <div class="mb-8">
+
+                                <h2 id="modalTitle" class="text-2xl font-black text-white">
+                    הוספת עסק חדש
+                </h2>
+
+                <p id="modalSubtitle" class="text-slate-400 text-sm mt-1">
+                    מלא את הפרטים
+                </p>
+
+            </div>
+
+            <form id="businessForm" class="space-y-5">
+
+                <input type="hidden" id="formBusinessId" />
+
+                <div>
+
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                        שם העסק
+                        <span class="text-red-400">*</span>
+                    </label>
+
+                    <input
+                        type="text"
+                        id="formName"
+                        required
+                        placeholder="לדוגמה: מספרת אבי"
+                        class="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-white font-black placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" />
+
+                </div>
+
+                <div id="phoneField">
+
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                        מספר טלפון
+                        <span class="text-red-400">*</span>
+                    </label>
+
+                    <input
+                        type="tel"
+                        id="formPhone"
+                        placeholder="05X-XXXXXXX"
+                        dir="ltr"
+                        class="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-white font-black placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" />
+
+                </div>
+
+                <div>
+
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                        מחיר טיפול
+                    </label>
+
+                    <div class="relative">
+
+                        <input
+                            type="number"
+                            id="formPrice"
+                            min="0"
+                            placeholder="0"
+                            class="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-white font-black placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all pl-12" />
+
+                        <span class="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-black">
+                            ₪
+                        </span>
+
+                    </div>
+
+                </div>
+
+                                <div>
+
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                        מיקום העסק
+                    </label>
+
+                    <input
+                        type="text"
+                        id="formLocation"
+                        placeholder="לדוגמה: רחוב הרצל 5, תל אביב"
+                        class="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-white font-black placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" />
+
+                </div>
+
+                <!-- BUSINESS SETTINGS SECTION -->
+                <div id="settingsSection" class="hidden border-t border-slate-100 pt-5 mt-2">
+
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">הגדרות תורים</p>
+
+                    <div class="grid grid-cols-2 gap-4">
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                                שעת פתיחה
+                            </label>
+                            <input
+                                type="time"
+                                id="formOpeningHour"
+                                value="09:00"
+                                class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white font-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" />
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                                שעת סגירה
+                            </label>
+                            <input
+                                type="time"
+                                id="formClosingHour"
+                                value="18:00"
+                                class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white font-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" />
+                        </div>
+
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mt-4">
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                                משך תור (דקות)
+                            </label>
+                            <input
+                                type="number"
+                                id="formDuration"
+                                min="5"
+                                max="480"
+                                value="30"
+                                placeholder="30"
+                                class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white font-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" />
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                                אזור זמן
+                            </label>
+                            <select
+                                id="formTimezone"
+                                class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white font-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+                                <option value="Asia/Jerusalem">ישראל (UTC+2/3)</option>
+                                <option value="Europe/London">לונדון (UTC+0/1)</option>
+                                <option value="America/New_York">ניו יורק (UTC-5/-4)</option>
+                                <option value="America/Los_Angeles">לוס אנג'לס (UTC-8/-7)</option>
+                            </select>
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div
+                    id="formError"
+                    class="hidden bg-red-500/10 text-red-200 border border-red-500/20 px-4 py-3 rounded-xl text-sm font-bold">
+                </div>
+
+                <div class="flex gap-3 pt-4">
+
+                    <button
+                        type="button"
+                        onclick="closeBusinessModal()"
+                        class="flex-1 px-6 py-4 bg-white/5 border border-white/10 text-slate-100 rounded-2xl font-black hover:bg-white/10 transition-all">
+
+                        ביטול
+                    </button>
+
+                    <button
+                        type="submit"
+                        id="formSubmitBtn"
+                        class="flex-1 px-6 py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+
+                        <span id="submitBtnText">הוספה</span>
+
+                        <svg
+                            id="submitSpinner"
+                            class="hidden animate-spin h-5 w-5 text-white"
+                            fill="none"
+                            viewBox="0 0 24 24">
+
+                            <circle
+                                class="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                stroke-width="4">
+                            </circle>
+
+                            <path
+                                class="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 
+                                0 0 5.373 0 12h4zm2 
+                                5.291A7.962 7.962 0 
+                                014 12H0c0 3.042 
+                                1.135 5.824 3 
+                                7.938l3-2.647z">
+                            </path>
+
+                        </svg>
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+    <!-- DELETE MODAL -->
+        <div id="deleteModal" class="hidden fixed inset-0 bg-slate-950/80 flex items-center justify-center z-[100] backdrop-blur-2xl">
+
+        <div class="glass p-10 rounded-[3rem] shadow-2xl w-[min(440px,92vw)] text-center relative border border-white/10 modal-animate">
+
+            <div class="w-16 h-16 bg-red-500/10 border border-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i data-lucide="alert-triangle" class="w-8 h-8 text-red-500"></i>
+            </div>
+
+            <h2 class="text-2xl font-black text-white mb-2">
+                מחיקת עסק
+            </h2>
+
+            <p class="text-slate-300 mb-8 font-bold">
+                האם אתה בטוח שברצונך למחוק את
+                <strong id="deleteBusinessName" class="text-white"></strong>?
+                <br>
+                פעולה זו אינה ניתנת לביטול.
+            </p>
+
+            <input type="hidden" id="deleteBusinessId" />
+
+            <div class="flex gap-3">
+
+                <button
+                    onclick="closeDeleteModal()"
+                    class="flex-1 px-6 py-4 bg-white/5 border border-white/10 text-slate-100 rounded-2xl font-black hover:bg-white/10 transition-all">
+
+                    ביטול
+                </button>
+
+                <button
+                    onclick="confirmDelete()"
+                    id="confirmDeleteBtn"
+                    class="flex-1 px-6 py-4 bg-red-500 text-white rounded-2xl font-bold hover:bg-red-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+
+                    <span id="deleteBtnText">מחיקה</span>
+
+                    <svg
+                        id="deleteSpinner"
+                        class="hidden animate-spin h-5 w-5 text-white"
+                        fill="none"
+                        viewBox="0 0 24 24">
+
+                        <circle
+                            class="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            stroke-width="4">
+                        </circle>
+
+                        <path
+                            class="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 
+                            0 0 5.373 0 12h4zm2 
+                            5.291A7.962 7.962 0 
+                            014 12H0c0 3.042 
+                            1.135 5.824 3 
+                            7.938l3-2.647z">
+                        </path>
+
+                    </svg>
+
+                </button>
+
+            </div>
+
+                </div>
+
+    </div>
+
+    <!-- TOAST CONTAINER -->
+    <div id="toastContainer" class="fixed top-6 left-6 z-[200] space-y-3 w-[340px] max-w-[calc(100vw-3rem)]"></div>
+
+    <script>
+
+        const socket = io();
+
+        // SaaS tenant isolation via Socket.IO rooms
+        function joinBusinessRoom(businessId) {
+            try {
+                const id = Number(businessId);
+                if (!id) return;
+                socket.emit('join_business', { business_id: id });
+            } catch (e) {
+                console.error('joinBusinessRoom error:', e);
+            }
+        }
+  
+                let businesses = [];
+        let currentId = null;
+
+        // ===== WHATSAPP PREMIUM ONBOARDING (frontend UX layer only) =====
+                const waOnboard = {
+            step: 'method', // method | phone | qr | done
+            method: null,
+            phone: '',
+            pairingCode: null,
+            pairingPhone: null,
+            businessId: null,
+            businessName: '',
+            qrRequested: false
+        };
+
+        function setWaStep(step) {
+            waOnboard.step = step;
+
+            const steps = ['method', 'phone', 'qr', 'done'];
+            steps.forEach(s => {
+                const el = document.getElementById(`waStep_${s}`);
+                if (el) el.classList.toggle('hidden', s !== step);
+            });
+
+            const dots = {
+                method: 'waStepDot_method',
+                phone: 'waStepDot_phone',
+                qr: 'waStepDot_qr',
+                done: 'waStepDot_done'
+            };
+
+            const order = ['method', 'phone', 'qr', 'done'];
+            const idx = order.indexOf(step);
+
+            order.forEach((s, i) => {
+                const dot = document.getElementById(dots[s]);
+                if (!dot) return;
+
+                const isActive = i === idx;
+                const isDone = i < idx;
+
+                dot.classList.toggle('text-white', isActive || isDone);
+                dot.classList.toggle('text-slate-400', !isActive && !isDone);
+                dot.classList.toggle('border-blue-500/30', isActive);
+                dot.classList.toggle('bg-blue-500/10', isActive);
+                dot.classList.toggle('border-emerald-500/20', isDone);
+                dot.classList.toggle('bg-emerald-500/5', isDone);
+            });
+
+            refreshIcons();
+        }
+
+        function setWaStatusPill(status) {
+            const pill = document.getElementById('waStatusPill');
+            if (!pill) return;
+
+            const map = {
+                connected: { text: 'מחובר', cls: 'border-emerald-500/20 bg-emerald-500/5 text-emerald-200' },
+                disconnected: { text: 'מנותק', cls: 'border-amber-500/20 bg-amber-500/10 text-amber-200' },
+                auth_failure: { text: 'נדרש אימות', cls: 'border-red-500/20 bg-red-500/10 text-red-200' },
+                failed: { text: 'נכשל', cls: 'border-red-500/20 bg-red-500/10 text-red-200' },
+                pending: { text: 'ממתין', cls: 'border-white/10 bg-white/5 text-slate-200' }
+            };
+
+            const cfg = map[status] || map.pending;
+            pill.className = `px-3 py-1.5 rounded-full text-[11px] font-black border ${cfg.cls}`;
+            pill.innerText = `מצב: ${cfg.text}`;
+        }
+
+        function updateWaStatusFromBiz(businessId) {
+            try {
+                const biz = businesses.find(b => Number(b.id) === Number(businessId));
+                const status = biz?.connection_status || 'pending';
+                setWaStatusPill(status);
+            } catch (_) {}
+        }
+
+                function waChooseMethod(method) {
+            waOnboard.method = method;
+
+            // Reset pairing state on method switch
+            waOnboard.pairingCode = null;
+            waOnboard.pairingPhone = null;
+
+            if (method === 'phone') {
+                setWaStep('phone');
+                const input = document.getElementById('waPhoneInput');
+                setTimeout(() => { try { input?.focus(); } catch (_) {} }, 120);
+                return;
+            }
+
+            setWaStep('qr');
+            waStartQr();
+        }
+
+        function waSwitchToQr() {
+            waOnboard.method = 'qr';
+            waOnboard.pairingCode = null;
+            waOnboard.pairingPhone = null;
+            setWaStep('qr');
+            waStartQr();
+        }
+
+        function renderPairingPanel() {
+            try {
+                const panel = document.getElementById('waPairingPanel');
+                const codeEl = document.getElementById('waPairingCodeText');
+                const phoneEl = document.getElementById('waPairingPhoneText');
+                const useQrBtn = document.getElementById('waUseQrBtn');
+                const refreshBtn = document.getElementById('waRefreshQrBtn');
+                const qrBox = document.getElementById('qrBox');
+                const title = document.getElementById('waQrTitle');
+                const subtitle = document.getElementById('waQrSubtitle');
+
+                const hasCode = Boolean(waOnboard.pairingCode);
+
+                if (panel) panel.classList.toggle('hidden', !hasCode);
+                if (useQrBtn) useQrBtn.classList.toggle('hidden', !hasCode);
+
+                if (hasCode) {
+                    if (codeEl) codeEl.innerText = String(waOnboard.pairingCode || '—');
+                    if (phoneEl) phoneEl.innerText = waOnboard.pairingPhone ? `מספר: ${waOnboard.pairingPhone}` : '';
+                    if (title) title.innerText = 'התחברות עם מספר (Pairing Code)';
+                    if (subtitle) subtitle.innerText = 'הזן את הקוד בוואטסאפ — אין צורך לסרוק QR מהמובייל';
+                    if (refreshBtn) refreshBtn.innerText = 'צור קוד חדש';
+                    if (qrBox) qrBox.classList.add('hidden');
+                } else {
+                    if (title) title.innerText = 'סרוק את ה־QR';
+                    if (subtitle) subtitle.innerText = 'פתח WhatsApp → Linked devices → Link a device';
+                    if (refreshBtn) refreshBtn.innerText = 'רענון';
+                    if (qrBox) qrBox.classList.remove('hidden');
+                }
+
+                refreshIcons();
+            } catch (e) {
+                console.error('renderPairingPanel error:', e);
+            }
+        }
+
+
+        function waBack() {
+            if (waOnboard.step === 'phone') {
+                setWaStep('method');
+                return;
+            }
+            if (waOnboard.step === 'qr') {
+                if (waOnboard.method === 'phone') setWaStep('phone');
+                else setWaStep('method');
+                return;
+            }
+            setWaStep('method');
+        }
+
+        function isLikelyIsraeliPhone(input) {
+            const clean = String(input || '').replace(/\s|\-|\(|\)/g, '');
+            // very light validation to avoid blocking
+            return clean.length >= 9;
+        }
+
+                async function waContinuePhone() {
+            const input = document.getElementById('waPhoneInput');
+            const errEl = document.getElementById('waPhoneError');
+
+            const value = input ? String(input.value || '').trim() : '';
+            if (!isLikelyIsraeliPhone(value)) {
+                if (errEl) {
+                    errEl.innerText = 'אנא הזן מספר טלפון תקין';
+                    errEl.classList.remove('hidden');
+                }
+                return;
+            }
+
+            if (errEl) errEl.classList.add('hidden');
+
+            waOnboard.phone = value;
+
+            // Premium verification animation
+            const form = document.getElementById('waPhoneForm');
+            const verify = document.getElementById('waPhoneVerify');
+            if (form && verify) {
+                form.classList.add('hidden');
+                verify.classList.remove('hidden');
+            }
+
+            // Request pairing code from backend (fallback to QR on any failure)
+            try {
+                const res = await safeFetch(`/api/businesses/${waOnboard.businessId}/pairing-code`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone: value })
+                });
+
+                const data = await res.json();
+
+                waOnboard.pairingCode = data?.code || null;
+                waOnboard.pairingPhone = data?.phone || null;
+
+                if (!waOnboard.pairingCode) {
+                    throw new Error('no_code');
+                }
+
+                setWaStep('qr');
+                renderPairingPanel();
+                showToast('success', 'קוד צימוד נוצר. הזן אותו בוואטסאפ (Linked Devices).', 'Pairing Code', 3200);
+
+            } catch (e) {
+                console.warn('Pairing code failed, fallback to QR:', e?.message || e);
+                showToast('info', 'לא הצלחנו ליצור קוד צימוד. ממשיכים עם QR (הדרך הבטוחה).', 'התחברות');
+
+                waOnboard.pairingCode = null;
+                waOnboard.pairingPhone = null;
+
+                setWaStep('qr');
+                renderPairingPanel();
+                waStartQr();
+
+            } finally {
+                try {
+                    if (form && verify) {
+                        verify.classList.add('hidden');
+                        form.classList.remove('hidden');
+                    }
+                } catch (_) {}
+            }
+        }
+
+
+                async function waStartQr() {
+            if (!waOnboard.businessId) return;
+
+            // If using pairing code, do not request QR.
+            if (waOnboard.pairingCode) {
+                renderPairingPanel();
+                return;
+            }
+
+            renderPairingPanel();
+
+            // Render placeholder immediately
+            renderQR(String(waOnboard.businessId));
+
+            if (waOnboard.qrRequested) return;
+
+            try {
+                waOnboard.qrRequested = true;
+                qrLoading = true;
+
+                await safeFetch(`/api/businesses/${waOnboard.businessId}/qr`, { method: 'POST' });
+            } catch (e) {
+                console.error('waStartQr error:', e);
+                showToast('error', 'שגיאה ביצירת QR', 'שגיאה');
+            } finally {
+                qrLoading = false;
+            }
+        }
+
+
+                async function waRefreshQr() {
+            if (!waOnboard.businessId) return;
+
+            // If we're in pairing mode, just re-request pairing code.
+            if (waOnboard.pairingCode) {
+                waOnboard.pairingCode = null;
+                waOnboard.pairingPhone = null;
+                renderPairingPanel();
+
+                // Re-run pairing request using the last typed phone (if exists)
+                const input = document.getElementById('waPhoneInput');
+                const lastPhone = waOnboard.phone || (input ? String(input.value || '').trim() : '');
+
+                if (!lastPhone) {
+                    showToast('info', 'הזן מספר כדי ליצור קוד צימוד', 'Pairing Code');
+                    setWaStep('phone');
+                    return;
+                }
+
+                // show verify UI briefly
+                const form = document.getElementById('waPhoneForm');
+                const verify = document.getElementById('waPhoneVerify');
+                if (form && verify) {
+                    form.classList.add('hidden');
+                    verify.classList.remove('hidden');
+                }
+
+                try {
+                    const res = await safeFetch(`/api/businesses/${waOnboard.businessId}/pairing-code`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ phone: lastPhone })
+                    });
+                    const data = await res.json();
+
+                    waOnboard.pairingCode = data?.code || null;
+                    waOnboard.pairingPhone = data?.phone || null;
+
+                    if (!waOnboard.pairingCode) throw new Error('no_code');
+
+                    setWaStep('qr');
+                    renderPairingPanel();
+                } catch (e) {
+                    showToast('info', 'לא הצלחנו ליצור קוד צימוד. ניתן לעבור ל־QR.', 'התחברות');
+                    waOnboard.pairingCode = null;
+                    waOnboard.pairingPhone = null;
+                    renderPairingPanel();
+                    waStartQr();
+                } finally {
+                    try {
+                        if (form && verify) {
+                            verify.classList.add('hidden');
+                            form.classList.remove('hidden');
+                        }
+                    } catch (_) {}
+                }
+
+                return;
+            }
+
+            try {
+                waOnboard.qrRequested = false;
+                delete qrCache[String(waOnboard.businessId)];
+                renderQR(String(waOnboard.businessId));
+                await waStartQr();
+            } catch (e) {
+                console.error('waRefreshQr error:', e);
+            }
+        }
+
+
+
+        // ===== CHAT CENTER STATE =====
+        const chatState = {
+            businessId: null,
+            conversations: [],
+            activeConversationId: null,
+            messagesByConversationId: {},
+            loadingConversations: false,
+            loadingMessages: false,
+            sending: false,
+            convoLimit: 80,
+            convoOffset: 0,
+            msgLimit: 200,
+            msgOffset: 0
+        };
+
+
+                let isSubmitting = false;
+                let socketInitialized = false;
+                let qrLoading = false;
+                let isToggling = new Set(); // Prevent duplicate toggles
+                let renderVersion = 0; // Prevent stale renders
+                let isLoadingBusinesses = false;
+
+        const qrCache = {};
+        
+        // Default business settings
+        const DEFAULT_SETTINGS = {
+            opening_hour: '09:00',
+            closing_hour: '18:00',
+            appointment_duration: 30,
+            timezone: 'Asia/Jerusalem'
+        };
+
+        window.addEventListener('unhandledrejection', event => {
+            console.error('Unhandled Promise:', event.reason);
+        });
+
+        window.addEventListener('error', event => {
+            console.error('Global Error:', event.error);
+        });
+
+        function refreshIcons() {
+            try {
+                lucide.createIcons();
+            } catch (err) {
+                console.error('Lucide Error:', err);
+            }
+        }
+
+                function canCloseModal() {
+            return !isSubmitting && !qrLoading;
+        }
+
+        // ===== TOASTS (replaces alert()) =====
+        function showToast(type, message, title = null, durationMs = 3500) {
+            try {
+                const container = document.getElementById('toastContainer');
+                if (!container) return;
+
+                                const colors = {
+                    success: { icon: 'check-circle', ring: 'ring-emerald-500/20', bg: 'bg-slate-950/70', iconColor: 'text-emerald-300', titleColor: 'text-white' },
+                    error: { icon: 'x-circle', ring: 'ring-red-500/20', bg: 'bg-slate-950/70', iconColor: 'text-red-300', titleColor: 'text-white' },
+                    info: { icon: 'info', ring: 'ring-blue-500/20', bg: 'bg-slate-950/70', iconColor: 'text-blue-300', titleColor: 'text-white' }
+                };
+
+
+                const cfg = colors[type] || colors.info;
+
+                const el = document.createElement('div');
+                el.className = `toast-animate glass ${cfg.bg} ring-1 ${cfg.ring} shadow-2xl rounded-2xl px-4 py-3 flex gap-3 items-start`;
+                el.innerHTML = `
+                    <div class="mt-0.5">
+                        <i data-lucide="${cfg.icon}" class="w-5 h-5 ${cfg.iconColor}"></i>
+                    </div>
+                    <div class="flex-1">
+                        ${title ? `<div class="text-sm font-black ${cfg.titleColor}">${title}</div>` : ''}
+                                                <div class="text-sm font-bold text-slate-200 leading-snug">${message}</div>
+                    </div>
+                    <button class="text-slate-400 hover:text-white transition-colors" aria-label="Close">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                `;
+
+                const closeBtn = el.querySelector('button');
+                const remove = () => {
+                    el.style.transition = 'opacity 180ms ease, transform 180ms ease';
+                    el.style.opacity = '0';
+                    el.style.transform = 'translateY(6px)';
+                    setTimeout(() => {
+                        try { el.remove(); } catch (_) {}
+                    }, 190);
+                };
+
+                if (closeBtn) closeBtn.addEventListener('click', remove, { once: true });
+
+                container.appendChild(el);
+                refreshIcons();
+
+                setTimeout(remove, durationMs);
+            } catch (err) {
+                console.error('Toast error:', err);
+            }
+        }
+
+        async function safeFetch(url, options = {}) {
+
+            try {
+
+                const response = await fetch(url, options);
+
+                                if (!response.ok) {
+
+                    let errorMessage = 'Request failed';
+
+                    try {
+                        const data = await response.json();
+                        // backend usually returns { error: "..." }
+                        errorMessage = data.error || data.message || errorMessage;
+                    } catch (_) {}
+
+                    throw new Error(errorMessage);
+                }
+
+                return response;
+
+            } catch (err) {
+
+                console.error(`Fetch Error (${url})`, err);
+                throw err;
+            }
+        }
+
+        function initSocket() {
+
+            if (!socket) return;
+            if (socketInitialized) return;
+
+            socketInitialized = true;
+
+                        socket.onAny((event, data) => {
+
+                const parts = event.split('_');
+
+                if (parts.length < 2) return;
+
+                const type = parts[0];
+                const id = parts.slice(1).join('_');
+
+                if (type === 'qr' && data?.qr) {
+
+                    qrCache[id] = data.qr;
+
+                    if (String(currentId) === id) {
+                        renderQR(id);
+                    }
+                }
+
+                if (type === 'status' && data?.status) {
+
+                    const biz = businesses.find(b => String(b.id) === id);
+
+                    if (biz) {
+                        biz.connection_status = data.status;
+                        render();
+                    }
+
+                    // If onboarding modal is open for this business, update its UI
+                    if (waOnboard.businessId && String(waOnboard.businessId) === String(id)) {
+                        setWaStatusPill(data.status);
+                        if (data.status === 'connected') {
+                            setWaStep('done');
+                        }
+                    }
+                }
+
+            });
+
+            // ===== CHAT REALTIME EVENTS (ROOM-SCOPED SERVER EMITS) =====
+            socket.on('conversation_updated', payload => {
+                try {
+                    handleConversationUpdated(payload);
+                } catch (e) {
+                    console.error('conversation_updated handler error:', e);
+                }
+            });
+
+            socket.on('new_message', payload => {
+                try {
+                    handleRealtimeMessage(payload);
+                } catch (e) {
+                    console.error('new_message handler error:', e);
+                }
+            });
+
+            socket.on('message_sent', payload => {
+                try {
+                    handleRealtimeMessage(payload);
+                } catch (e) {
+                    console.error('message_sent handler error:', e);
+                }
+            });
+
+            socket.on('connect_error', err => {
+                console.error('Socket Error:', err);
+            });
+
+            socket.on('disconnect', reason => {
+                console.warn('Socket Disconnected:', reason);
+            });
+        }
+
+                function renderBusinessesSkeleton(count = 6) {
+            const grid = document.getElementById('biz-grid');
+            if (!grid) return;
+
+            grid.innerHTML = Array.from({ length: count }).map(() => `
+                <div class="glass glass-card p-8 rounded-[3rem]">
+                    <div class="flex justify-between items-start mb-8 relative z-10">
+                        <div class="flex gap-2">
+                            <div class="w-10 h-10 rounded-xl skeleton"></div>
+                            <div class="w-10 h-10 rounded-xl skeleton"></div>
+                            <div class="w-10 h-10 rounded-xl skeleton"></div>
+                        </div>
+                        <div class="h-6 w-24 rounded-full skeleton"></div>
+                    </div>
+                    <div class="relative z-10">
+                        <div class="h-7 w-40 rounded-xl skeleton"></div>
+                        <div class="h-4 w-28 rounded-xl skeleton mt-3"></div>
+
+                        <div class="mt-6 space-y-2">
+                            <div class="h-10 rounded-2xl skeleton"></div>
+                            <div class="h-10 rounded-2xl skeleton"></div>
+                            <div class="h-10 rounded-2xl skeleton"></div>
+                        </div>
+
+                        <div class="h-14 rounded-[1.5rem] skeleton mt-8"></div>
+                    </div>
+                </div>
+            `).join('');
+
+            refreshIcons();
+        }
+
+        async function loadBusinesses() {
+            isLoadingBusinesses = true;
+            renderBusinessesSkeleton();
+
+            try {
+                                const res = await safeFetch('/api/businesses');
+                businesses = await res.json();
+
+                if (!Array.isArray(businesses)) {
+                    businesses = [];
+                }
+
+                // Join Socket.IO rooms for all businesses we manage (admin dashboard)
+                businesses.forEach(b => joinBusinessRoom(b.id));
+
+                render();
+
+
+            } catch (err) {
+                console.error(err);
+                businesses = [];
+
+                document.getElementById('biz-grid').innerHTML = `
+                    <div class="col-span-full text-center py-20">
+                        <p class="text-red-500 font-bold">
+                            שגיאה בטעינת עסקים
+                        </p>
+                    </div>
+                `;
+            } finally {
+                isLoadingBusinesses = false;
+            }
+        }
+
+        async function loadBookings() {
+
+            try {
+
+                const res = await safeFetch('/api/bookings');
+
+                const bookings = await res.json();
+
+                const tbody = document.getElementById('bookings-table-body');
+
+                tbody.innerHTML = Array.isArray(bookings)
+                    ? bookings.map(b => `
+                        <tr class="text-sm">
+                                                        <td class="py-4 font-black text-slate-100">
+                                ${b.customer_phone || '-'}
+                            </td>
+
+                            <td class="py-4 text-blue-300 font-black">
+                                ${b.datetime || b.time || '-'}
+                            </td>
+
+                            <td class="py-4 text-slate-300 font-bold">
+                                ${b.business_name || '-'}
+                            </td>
+
+                            <td class="py-4 text-left text-slate-500 text-xs font-bold">
+                                ${b.created_at
+                                    ? new Date(b.created_at).toLocaleString('he-IL')
+                                    : '-'}
+                            </td>
+                        </tr>
+                    `).join('')
+                    : '';
+
+            } catch (err) {
+
+                console.error(err);
+
+                document.getElementById('bookings-table-body').innerHTML = `
+                    <tr>
+                        <td colspan="4" class="py-10 text-center text-red-500 font-bold">
+                            שגיאה בטעינת תורים
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        // ===== CHAT CENTER =====
+
+        function escapeHtml(str) {
+            return String(str || '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+
+        function formatTs(ts) {
+            try {
+                if (!ts) return '';
+                const d = new Date(ts);
+                if (Number.isNaN(d.getTime())) return '';
+                return d.toLocaleString('he-IL', { hour: '2-digit', minute: '2-digit' });
+            } catch (_) {
+                return '';
+            }
+        }
+
+        function getSelectedBusinessId() {
+            const el = document.getElementById('chatBusinessSelect');
+            const val = el ? Number(el.value) : null;
+            return val && Number.isFinite(val) ? val : null;
+        }
+
+        function setSelectedBusinessId(businessId) {
+            const el = document.getElementById('chatBusinessSelect');
+            if (el) el.value = String(businessId || '');
+        }
+
+        function ensureChatBusinessSelected() {
+            if (chatState.businessId) return chatState.businessId;
+
+            const current = getSelectedBusinessId();
+            if (current) {
+                chatState.businessId = current;
+                return current;
+            }
+
+            const first = businesses && businesses.length ? Number(businesses[0].id) : null;
+            if (first) {
+                chatState.businessId = first;
+                setSelectedBusinessId(first);
+                joinBusinessRoom(first);
+            }
+
+            return chatState.businessId;
+        }
+
+        function resetChatStateForBusiness(businessId) {
+            chatState.businessId = businessId;
+            chatState.conversations = [];
+            chatState.activeConversationId = null;
+            chatState.messagesByConversationId = {};
+            chatState.convoOffset = 0;
+            chatState.msgOffset = 0;
+        }
+
+        function initChatUI() {
+            try {
+                const select = document.getElementById('chatBusinessSelect');
+                if (!select) return;
+
+                // Populate options (idempotent)
+                const currentVal = select.value;
+                select.innerHTML = '<option value="">בחר עסק</option>' +
+                    (Array.isArray(businesses)
+                        ? businesses.map(b => `<option value="${b.id}">${escapeHtml(b.name)} (#${b.id})</option>`).join('')
+                        : '');
+
+                if (currentVal) select.value = currentVal;
+
+                if (!select.__bound) {
+                    select.__bound = true;
+                    select.addEventListener('change', async () => {
+                        const id = getSelectedBusinessId();
+                        if (!id) {
+                            resetChatStateForBusiness(null);
+                            renderChatCenter();
+                            return;
+                        }
+
+                        joinBusinessRoom(id);
+                        resetChatStateForBusiness(id);
+                        await loadConversations();
+                    });
+                }
+
+                // Enter key to send
+                const input = document.getElementById('chatInput');
+                if (input && !input.__bound) {
+                    input.__bound = true;
+                    input.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            sendChatMessage();
+                        }
+                    });
+                }
+
+            } catch (e) {
+                console.error('initChatUI error:', e);
+            }
+        }
+
+        async function refreshChat() {
+            const businessId = ensureChatBusinessSelected();
+            if (!businessId) {
+                showToast('info', 'בחר עסק כדי לראות שיחות', 'מרכז שיחות');
+                renderChatCenter();
+                return;
+            }
+
+            joinBusinessRoom(businessId);
+            await loadConversations();
+        }
+
+        async function loadConversations() {
+            const businessId = ensureChatBusinessSelected();
+            if (!businessId) return;
+
+            chatState.loadingConversations = true;
+            renderChatCenter();
+
+            try {
+                const url = `/api/conversations?business_id=${businessId}&limit=${chatState.convoLimit}&offset=${chatState.convoOffset}`;
+                const res = await safeFetch(url);
+                const list = await res.json();
+                chatState.conversations = Array.isArray(list) ? list : [];
+            } catch (e) {
+                console.error('loadConversations error:', e);
+                chatState.conversations = [];
+            } finally {
+                chatState.loadingConversations = false;
+                renderChatCenter();
+            }
+        }
+
+        async function loadMessages(conversationId) {
+            if (!conversationId) return;
+            chatState.loadingMessages = true;
+            renderChatCenter();
+
+            try {
+                const url = `/api/conversations/${conversationId}/messages?limit=${chatState.msgLimit}&offset=${chatState.msgOffset}`;
+                const res = await safeFetch(url);
+                const list = await res.json();
+                chatState.messagesByConversationId[conversationId] = Array.isArray(list) ? list : [];
+            } catch (e) {
+                console.error('loadMessages error:', e);
+                chatState.messagesByConversationId[conversationId] = [];
+            } finally {
+                chatState.loadingMessages = false;
+                renderChatCenter();
+                scrollChatToBottom();
+            }
+        }
+
+        async function openConversation(convoId) {
+            chatState.activeConversationId = convoId;
+            renderChatCenter();
+
+            await loadMessages(convoId);
+
+            // Mark as read (best effort)
+            try {
+                await safeFetch(`/api/conversations/${convoId}/read`, { method: 'POST' });
+                // Local optimistic: set unread=0
+                const idx = chatState.conversations.findIndex(c => c.id === convoId);
+                if (idx !== -1) {
+                    chatState.conversations[idx].unread_count = 0;
+                    renderChatCenter();
+                }
+            } catch (e) {
+                // ignore
+            }
+        }
+
+        function getActiveConversation() {
+            const id = chatState.activeConversationId;
+            if (!id) return null;
+            return chatState.conversations.find(c => c.id === id) || null;
+        }
+
+        function getActiveMessages() {
+            const id = chatState.activeConversationId;
+            if (!id) return [];
+            return chatState.messagesByConversationId[id] || [];
+        }
+
+        function renderChatCenter() {
+            // Ensure select options exist
+            initChatUI();
+
+            const listEl = document.getElementById('chatConversationsList');
+            const metaEl = document.getElementById('chatConvoMeta');
+            const headerTitle = document.getElementById('chatHeaderTitle');
+            const headerSub = document.getElementById('chatHeaderSubtitle');
+            const modeBtn = document.getElementById('chatModeBtn');
+            const markReadBtn = document.getElementById('chatMarkReadBtn');
+            const messagesEl = document.getElementById('chatMessages');
+
+            if (!listEl || !messagesEl) return;
+
+            const businessId = ensureChatBusinessSelected();
+
+            if (metaEl) {
+                const totalUnread = (chatState.conversations || []).reduce((acc, c) => acc + (Number(c.unread_count) || 0), 0);
+                metaEl.innerText = businessId
+                    ? `${chatState.conversations.length} שיחות • ${totalUnread} לא נקראו`
+                    : '';
+            }
+
+            // Conversations list
+            if (!businessId) {
+                listEl.innerHTML = `
+                    <div class="text-center py-10">
+                                                <div class="text-slate-200 font-black">בחר עסק</div>
+                        <div class="text-slate-400 text-sm font-bold mt-1">כדי לראות שיחות בזמן אמת</div>
+                    </div>
+                `;
+            } else if (chatState.loadingConversations) {
+                listEl.innerHTML = `
+                    <div class="space-y-2">
+                        ${Array.from({ length: 6 }).map(() => `<div class="h-16 rounded-2xl skeleton"></div>`).join('')}
+                    </div>
+                `;
+            } else if (!chatState.conversations.length) {
+                listEl.innerHTML = `
+                    <div class="text-center py-10">
+                                                <div class="text-slate-200 font-black">אין שיחות</div>
+                        <div class="text-slate-400 text-sm font-bold mt-1">כשתיכנס הודעה מלקוח היא תופיע כאן</div>
+                    </div>
+                `;
+            } else {
+                listEl.innerHTML = chatState.conversations.map(c => {
+                    const active = chatState.activeConversationId === c.id;
+                    const unread = Number(c.unread_count) || 0;
+                    const mode = String(c.mode || 'bot').toUpperCase();
+                    const last = c.last_message ? escapeHtml(c.last_message) : '';
+
+                    return `
+                        <button
+                            onclick="openConversation(${c.id})"
+                            class="w-full text-right p-4 rounded-2xl border transition-all ${active ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/10 bg-white/5 hover:bg-white/10'}">
+
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <div class="font-black text-white truncate" dir="ltr">${escapeHtml(c.customer_phone || '')}</div>
+                                    <div class="text-xs font-bold text-slate-400 truncate mt-1">${last || '—'}</div>
+                                </div>
+
+                                <div class="flex flex-col items-end gap-2">
+                                    <div class="text-[10px] font-black px-2 py-1 rounded-full border ${mode === 'MANUAL' ? 'bg-amber-500/10 text-amber-200 border-amber-500/20' : 'bg-white/5 text-slate-200 border-white/10'}">
+                                        ${mode}
+                                    </div>
+                                    ${unread > 0 ? `<div class="text-[11px] font-black px-2.5 py-1 rounded-full bg-blue-600 text-white">${unread}</div>` : ''}
+                                </div>
+                            </div>
+                        </button>
+                    `;
+                }).join('');
+            }
+
+            // Header & buttons
+            const activeConvo = getActiveConversation();
+
+            if (!activeConvo) {
+                if (headerTitle) headerTitle.innerText = businessId ? 'בחר שיחה' : 'בחר עסק';
+                if (headerSub) headerSub.innerText = '';
+                if (modeBtn) {
+                    modeBtn.disabled = true;
+                    modeBtn.innerText = 'מצב: BOT';
+                }
+                if (markReadBtn) markReadBtn.disabled = true;
+
+                messagesEl.innerHTML = `
+                    <div class="text-center py-16">
+                                                <div class="text-slate-200 font-black">אין שיחה פתוחה</div>
+                        <div class="text-slate-400 text-sm font-bold mt-1">בחר שיחה מהרשימה כדי להתחיל</div>
+                    </div>
+                `;
+
+                refreshIcons();
+                return;
+            }
+
+            if (headerTitle) headerTitle.innerText = activeConvo.customer_name || activeConvo.customer_phone || 'שיחה';
+            if (headerSub) headerSub.innerText = `עודכן: ${formatTs(activeConvo.last_message_at || activeConvo.updated_at || activeConvo.created_at)}`;
+
+            if (modeBtn) {
+                const mode = String(activeConvo.mode || 'bot');
+                modeBtn.disabled = false;
+                modeBtn.innerText = `מצב: ${mode === 'manual' ? 'MANUAL' : 'BOT'}`;
+                modeBtn.classList.toggle('bg-amber-500', mode === 'manual');
+                modeBtn.classList.toggle('hover:bg-amber-600', mode === 'manual');
+                modeBtn.classList.toggle('bg-slate-900', mode !== 'manual');
+                modeBtn.classList.toggle('hover:bg-black', mode !== 'manual');
+            }
+
+            if (markReadBtn) {
+                markReadBtn.disabled = false;
+            }
+
+            // Messages
+            const msgs = getActiveMessages();
+
+            if (chatState.loadingMessages) {
+                messagesEl.innerHTML = `
+                    <div class="space-y-3">
+                        ${Array.from({ length: 7 }).map(() => `<div class="h-12 rounded-2xl skeleton"></div>`).join('')}
+                    </div>
+                `;
+            } else if (!msgs.length) {
+                messagesEl.innerHTML = `
+                    <div class="text-center py-16">
+                                                <div class="text-slate-200 font-black">אין הודעות</div>
+                        <div class="text-slate-400 text-sm font-bold mt-1">שלח הודעה כדי להתחיל</div>
+                    </div>
+                `;
+            } else {
+                messagesEl.innerHTML = msgs.map(m => {
+                    const sender = String(m.sender || 'customer');
+                    const isCustomer = sender === 'customer';
+                    const bubble = isCustomer
+                                                ? 'bg-white/5 text-slate-100 border border-white/10'
+                        : sender === 'admin'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-emerald-600 text-white';
+
+                    const align = isCustomer ? 'items-start' : 'items-end';
+                    const label = isCustomer ? 'לקוח' : sender.toUpperCase();
+
+                    return `
+                        <div class="flex flex-col ${align}">
+                            <div class="max-w-[82%] rounded-3xl px-5 py-4 ${bubble} shadow-sm">
+                                <div class="text-[11px] font-black opacity-80 mb-1">${label}</div>
+                                <div class="text-sm font-bold leading-relaxed whitespace-pre-wrap">${escapeHtml(m.message || '')}</div>
+                                <div class="text-[11px] font-black opacity-70 mt-2">${formatTs(m.created_at)}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // Send button state
+            const sendBtn = document.getElementById('chatSendBtn');
+            if (sendBtn) sendBtn.disabled = chatState.sending || !chatState.activeConversationId;
+
+            refreshIcons();
+        }
+
+        function scrollChatToBottom() {
+            try {
+                const el = document.getElementById('chatMessages');
+                if (!el) return;
+                el.scrollTop = el.scrollHeight;
+            } catch (_) {}
+        }
+
+        async function sendChatMessage() {
+            const convo = getActiveConversation();
+            if (!convo) return;
+
+            const input = document.getElementById('chatInput');
+            const text = input ? String(input.value || '').trim() : '';
+            if (!text) return;
+
+            if (chatState.sending) return;
+            chatState.sending = true;
+            renderChatCenter();
+
+            try {
+                if (input) input.value = '';
+
+                await safeFetch(`/api/conversations/${convo.id}/messages`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: text })
+                });
+
+                // We rely on socket events to append + update preview.
+            } catch (e) {
+                console.error('sendChatMessage error:', e);
+                showToast('error', 'לא ניתן לשלוח הודעה כרגע', 'שגיאה');
+            } finally {
+                chatState.sending = false;
+                renderChatCenter();
+            }
+        }
+
+        async function toggleConversationMode() {
+            const convo = getActiveConversation();
+            if (!convo) return;
+
+            const current = String(convo.mode || 'bot');
+            const next = current === 'manual' ? 'bot' : 'manual';
+
+            try {
+                const res = await safeFetch(`/api/conversations/${convo.id}/mode`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode: next })
+                });
+
+                const data = await res.json();
+                if (data?.conversation) {
+                    handleConversationUpdated({ business_id: data.conversation.business_id, conversation: data.conversation });
+                }
+
+                showToast('success', next === 'manual' ? 'הבוט הושהה לשיחה זו' : 'הבוט הופעל לשיחה זו', 'מצב שיחה', 2200);
+            } catch (e) {
+                console.error('toggleConversationMode error:', e);
+                showToast('error', 'לא ניתן לשנות מצב כרגע', 'שגיאה');
+            }
+        }
+
+        async function markActiveConversationRead() {
+            const convo = getActiveConversation();
+            if (!convo) return;
+
+            try {
+                const res = await safeFetch(`/api/conversations/${convo.id}/read`, { method: 'POST' });
+                const data = await res.json();
+                if (data?.conversation) {
+                    handleConversationUpdated({ business_id: data.conversation.business_id, conversation: data.conversation });
+                }
+            } catch (e) {
+                // ignore
+            }
+        }
+
+        function handleConversationUpdated(payload) {
+            const businessId = Number(payload?.business_id);
+            const convo = payload?.conversation;
+            if (!businessId || !convo) return;
+
+            // Only update active business list for now
+            if (chatState.businessId && businessId !== Number(chatState.businessId)) {
+                return;
+            }
+
+            const idx = chatState.conversations.findIndex(c => c.id === convo.id);
+            if (idx === -1) {
+                chatState.conversations.unshift(convo);
+            } else {
+                chatState.conversations[idx] = { ...chatState.conversations[idx], ...convo };
+            }
+
+            // Sort by last_message_at/created_at
+            chatState.conversations.sort((a, b) => {
+                const ta = new Date(a.last_message_at || a.created_at || 0).getTime();
+                const tb = new Date(b.last_message_at || b.created_at || 0).getTime();
+                return tb - ta;
+            });
+
+            renderChatCenter();
+        }
+
+        function handleRealtimeMessage(payload) {
+            const businessId = Number(payload?.business_id);
+            const conversationId = Number(payload?.conversation_id);
+            if (!businessId || !conversationId) return;
+
+            if (chatState.businessId && businessId !== Number(chatState.businessId)) {
+                return;
+            }
+
+            // Append message if this conversation is loaded
+            const sender = payload?.sender;
+            const message = payload?.message;
+            const createdAt = payload?.created_at || new Date().toISOString();
+
+            if (chatState.messagesByConversationId[conversationId]) {
+                const arr = chatState.messagesByConversationId[conversationId];
+                const last = arr[arr.length - 1];
+                const dup = last && last.sender === sender && last.message === message && String(last.created_at) === String(createdAt);
+                if (!dup) {
+                    arr.push({ sender, message, created_at: createdAt });
+                }
+            }
+
+            // If active conversation, scroll
+            if (chatState.activeConversationId === conversationId) {
+                renderChatCenter();
+                scrollChatToBottom();
+            }
+        }
+
+                function render() {
+
+
+            const currentVersion = ++renderVersion;
+            const grid = document.getElementById('biz-grid');
+
+            if (!Array.isArray(businesses)) {
+                businesses = [];
+            }
+
+            // Prevent stale render
+            if (currentVersion !== renderVersion) return;
+
+                        grid.innerHTML = businesses.map((b, idx) => `
+
+                <div class="glass glass-card card-enter p-8 rounded-[3rem] relative group transition-all duration-500 ${b.is_active ? '' : 'opacity-40 grayscale'}" style="animation-delay:${Math.min(idx * 45, 420)}ms">
+
+                    <div class="flex justify-between items-start mb-8">
+
+                        <div class="flex gap-2">
+
+                            <button
+                                onclick="deleteBusiness(${b.id})"
+                                class="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:bg-red-500/10 hover:text-red-200 transition-all shadow-sm">
+
+                                <i data-lucide="trash-2" class="w-5 h-5"></i>
+                            </button>
+
+                            <button
+                                onclick="toggleBusiness(${b.id})"
+                                class="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:bg-blue-500/10 hover:text-blue-200 transition-all shadow-sm">
+
+                                <i data-lucide="${b.is_active ? 'eye' : 'eye-off'}" class="w-5 h-5"></i>
+                            </button>
+
+                            <button
+                                onclick="editBusiness(${b.id})"
+                                class="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition-all shadow-sm">
+
+                                <i data-lucide="settings" class="w-5 h-5"></i>
+                            </button>
+
+                        </div>
+
+                                                                                                <div class="px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider flex items-center border border-white/10 ${b.connection_status === 'connected'
+                            ? 'bg-emerald-500/10 text-emerald-200 border-emerald-500/20'
+                            : 'bg-amber-500/10 text-amber-200 border-amber-500/20'}">
+
+                            <span class="status-dot ${b.connection_status === 'connected' ? 'connected' : 'pending'}"></span>
+                            ${b.connection_status === 'connected'
+                                ? 'Connected'
+                                : 'Pending'}
+
+                        </div>
+
+                    </div>
+
+                    <h3 class="text-2xl font-black text-white tracking-tight">
+                        ${b.name}
+                    </h3>
+
+                    <p class="text-slate-400 font-bold text-sm mt-1">
+                        ${b.phone || ''}
+                    </p>
+
+                    <div class="mt-6 space-y-2">
+
+                        <div class="flex justify-between text-xs font-bold bg-white/5 border border-white/10 p-3 rounded-2xl">
+
+                            <span class="text-slate-400 uppercase">
+                                מחיר:
+                            </span>
+
+                                                        <span class="text-slate-100">
+                                ${b.price || 0}₪
+                            </span>
+
+                        </div>
+
+                                                <div class="flex justify-between text-xs font-bold bg-white/5 border border-white/10 p-3 rounded-2xl">
+
+                            <span class="text-slate-400 uppercase">
+                                מיקום:
+                            </span>
+
+                                                        <span class="text-slate-100">
+                                ${b.location || 'לא הוגדר'}
+                            </span>
+
+                        </div>
+
+                        <div class="flex justify-between text-xs font-bold bg-white/5 border border-white/10 p-3 rounded-2xl">
+
+                            <span class="text-slate-400 uppercase">
+                                שעות פעילות:
+                            </span>
+
+                                                        <span class="text-slate-100">
+                                ${b.opening_hour || '09:00'} - ${b.closing_hour || '18:00'}
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                                                                                <button
+                        onclick="openQR('${b.id}', '${b.name}')"
+                        class="w-full bg-gradient-to-br from-slate-900 to-slate-950 text-white py-5 rounded-[1.5rem] font-extrabold flex items-center justify-center gap-3 hover:from-slate-800 hover:to-slate-950 transition-all mt-8 shadow-lg shadow-black/30 border border-white/10 active:scale-[0.99]">
+
+                        <i data-lucide="qr-code" class="w-5 h-5"></i>
+                        חיבור וואטסאפ
+
+                    </button>
+
+                </div>
+
+            `).join('');
+
+            refreshIcons();
+        }
+
+                function addBusiness() {
+
+            document.getElementById('businessForm').reset();
+
+            document.getElementById('formBusinessId').value = '';
+
+            // Reset settings to defaults
+            document.getElementById('formOpeningHour').value = DEFAULT_SETTINGS.opening_hour;
+            document.getElementById('formClosingHour').value = DEFAULT_SETTINGS.closing_hour;
+            document.getElementById('formDuration').value = DEFAULT_SETTINGS.appointment_duration;
+            document.getElementById('formTimezone').value = DEFAULT_SETTINGS.timezone;
+
+            document.getElementById('modalTitle').innerText = 'הוספת עסק חדש';
+
+            document.getElementById('modalSubtitle').innerText =
+                'מלא את הפרטים להוספת עסק חדש';
+
+            document.getElementById('submitBtnText').innerText = 'הוספה';
+
+            document.getElementById('phoneField')
+                .classList.remove('hidden');
+
+            // Hide settings section in add mode
+            document.getElementById('settingsSection')
+                .classList.add('hidden');
+
+            document.getElementById('formError')
+                .classList.add('hidden');
+
+            document.getElementById('businessModal')
+                .classList.remove('hidden');
+
+            refreshIcons();
+        }
+
+        function editBusiness(id) {
+            openEditBusinessModal(id);
+        }
+
+                function openEditBusinessModal(id) {
+
+            const biz = businesses.find(b => b.id === id);
+
+            if (!biz) return;
+
+            document.getElementById('formBusinessId').value = id;
+
+            document.getElementById('formName').value =
+                biz.name || '';
+
+            document.getElementById('formPhone').value =
+                biz.phone || '';
+
+            document.getElementById('formPrice').value =
+                biz.price || '';
+
+            document.getElementById('formLocation').value =
+                biz.location || '';
+
+            // Load business settings
+            document.getElementById('formOpeningHour').value =
+                biz.opening_hour || DEFAULT_SETTINGS.opening_hour;
+
+            document.getElementById('formClosingHour').value =
+                biz.closing_hour || DEFAULT_SETTINGS.closing_hour;
+
+            document.getElementById('formDuration').value =
+                biz.appointment_duration || DEFAULT_SETTINGS.appointment_duration;
+
+            document.getElementById('formTimezone').value =
+                biz.timezone || DEFAULT_SETTINGS.timezone;
+
+            document.getElementById('phoneField')
+                .classList.add('hidden');
+
+            // Show settings section in edit mode
+            document.getElementById('settingsSection')
+                .classList.remove('hidden');
+
+            document.getElementById('modalTitle').innerText =
+                'עריכת עסק';
+
+            document.getElementById('modalSubtitle').innerText =
+                `עדכון פרטי ${biz.name}`;
+
+            document.getElementById('submitBtnText').innerText =
+                'שמירה';
+
+            document.getElementById('formError')
+                .classList.add('hidden');
+
+            document.getElementById('businessModal')
+                .classList.remove('hidden');
+
+            refreshIcons();
+
+            setTimeout(() => {
+                document.getElementById('formName').focus();
+            }, 100);
+        }
+
+        function closeBusinessModal() {
+
+            if (!canCloseModal()) return;
+
+            document.getElementById('businessModal')
+                .classList.add('hidden');
+        }
+
+        function showFormError(message) {
+
+            const el = document.getElementById('formError');
+
+            el.innerText = message;
+
+            el.classList.remove('hidden');
+        }
+
+        function setFormLoading(state) {
+
+            isSubmitting = state;
+
+            document.getElementById('formSubmitBtn')
+                .disabled = state;
+
+            document.getElementById('submitSpinner')
+                .classList.toggle('hidden', !state);
+        }
+
+                async function handleBusinessSubmit(e) {
+
+            e.preventDefault();
+
+            if (isSubmitting) return;
+
+            const id =
+                document.getElementById('formBusinessId')
+                .value;
+
+            const name =
+                document.getElementById('formName')
+                .value
+                .trim();
+
+            const phone =
+                document.getElementById('formPhone')
+                .value
+                .trim();
+
+            const priceVal =
+                document.getElementById('formPrice')
+                .value
+                .trim();
+
+            const location =
+                document.getElementById('formLocation')
+                .value
+                .trim();
+
+            // Get settings values
+            const opening_hour =
+                document.getElementById('formOpeningHour')
+                .value || DEFAULT_SETTINGS.opening_hour;
+
+            const closing_hour =
+                document.getElementById('formClosingHour')
+                .value || DEFAULT_SETTINGS.closing_hour;
+
+            const durationVal =
+                document.getElementById('formDuration')
+                .value;
+
+            const timezone =
+                document.getElementById('formTimezone')
+                .value || DEFAULT_SETTINGS.timezone;
+
+            // Validation
+            if (!name) {
+                showFormError('שם העסק הוא שדה חובה');
+                return;
+            }
+
+            if (!id && !phone) {
+                showFormError('מספר טלפון הוא שדה חובה');
+                return;
+            }
+
+            // Validate settings (only in edit mode)
+            if (id) {
+                if (opening_hour >= closing_hour) {
+                    showFormError('שעת פתיחה חייבת להיות לפני שעת סגירה');
+                    return;
+                }
+
+                const duration = Number(durationVal);
+                if (duration && (duration < 5 || duration > 480)) {
+                    showFormError('משך תור חייב להיות בין 5 ל-480 דקות');
+                    return;
+                }
+            }
+
+            try {
+
+                setFormLoading(true);
+
+                document.getElementById('formError')
+                    .classList.add('hidden');
+
+                if (id) {
+
+                    // Update existing business with settings
+                    const response = await safeFetch(`/api/businesses/${id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            name,
+                            price: priceVal !== ''
+                                ? Number(priceVal)
+                                : null,
+                            location: location || null,
+                            opening_hour,
+                            closing_hour,
+                            appointment_duration: durationVal !== ''
+                                ? Number(durationVal)
+                                : DEFAULT_SETTINGS.appointment_duration,
+                            timezone
+                        })
+                    });
+
+                    // Update local state immediately
+                    const data = await response.json();
+                    if (data.business) {
+                        const idx = businesses.findIndex(b => b.id === Number(id));
+                        if (idx !== -1) {
+                            businesses[idx] = data.business;
+                        }
+                    }
+
+                } else {
+
+                    // Create new business
+                    await safeFetch('/api/businesses', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            name,
+                            phone
+                        })
+                    });
+                }
+
+                                closeBusinessModal();
+
+                showToast(
+                    'success',
+                    id ? 'פרטי העסק עודכנו בהצלחה' : 'העסק נוסף בהצלחה',
+                    'בוצע'
+                );
+
+                await loadBusinesses();
+
+            } catch (err) {
+
+                console.error(err);
+
+                showFormError(
+                    err.message || 'אירעה שגיאה, נסה שוב'
+                );
+
+            } finally {
+
+                setFormLoading(false);
+
+                document.getElementById('submitBtnText').innerText =
+                    id
+                        ? 'שמירה'
+                        : 'הוספה';
+            }
+        }
+
+        function deleteBusiness(id) {
+            openDeleteModal(id);
+        }
+
+        function openDeleteModal(id) {
+
+            const biz = businesses.find(b => b.id === id);
+
+            if (!biz) return;
+
+            document.getElementById('deleteBusinessId').value =
+                id;
+
+            document.getElementById('deleteBusinessName')
+                .innerText = biz.name;
+
+            document.getElementById('deleteModal')
+                .classList.remove('hidden');
+
+            refreshIcons();
+        }
+
+        function closeDeleteModal() {
+
+            if (!canCloseModal()) return;
+
+            document.getElementById('deleteModal')
+                .classList.add('hidden');
+        }
+
+        async function confirmDelete() {
+
+            if (isSubmitting) return;
+
+            const id =
+                document.getElementById('deleteBusinessId')
+                .value;
+
+            if (!id) return;
+
+            try {
+
+                isSubmitting = true;
+
+                document.getElementById('confirmDeleteBtn')
+                    .disabled = true;
+
+                document.getElementById('deleteBtnText')
+                    .innerText = 'מוחק...';
+
+                document.getElementById('deleteSpinner')
+                    .classList.remove('hidden');
+
+                await safeFetch(`/api/businesses/${id}`, {
+                    method: 'DELETE'
+                });
+
+                                closeDeleteModal();
+
+                showToast('success', 'העסק נמחק בהצלחה', 'בוצע');
+
+                await loadBusinesses();
+
+            } catch (err) {
+
+                console.error(err);
+
+                                showToast(
+                    'error',
+                    err.message || 'מחיקת העסק נכשלה',
+                    'שגיאה'
+                );
+
+            } finally {
+
+                isSubmitting = false;
+
+                document.getElementById('confirmDeleteBtn')
+                    .disabled = false;
+
+                document.getElementById('deleteBtnText')
+                    .innerText = 'מחיקה';
+
+                document.getElementById('deleteSpinner')
+                    .classList.add('hidden');
+            }
+        }
+
+                async function toggleBusiness(id) {
+
+            // Prevent duplicate toggle requests
+            if (isToggling.has(id)) {
+                return;
+            }
+
+            isToggling.add(id);
+
+            try {
+
+                const response = await safeFetch(`/api/businesses/toggle/${id}`, {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+
+                // Update local state immediately
+                const biz = businesses.find(b => b.id === id);
+                                if (biz && data.is_active !== undefined) {
+                    biz.is_active = data.is_active;
+                    render();
+
+                    showToast(
+                        'success',
+                        data.is_active ? 'העסק הופעל' : 'העסק הושהה',
+                        'בוצע',
+                        2200
+                    );
+                } else {
+                    await loadBusinesses();
+                }
+
+            } catch (err) {
+
+                console.error(err);
+
+                showToast('error', 'לא ניתן לעדכן את מצב העסק', 'שגיאה');
+
+            } finally {
+
+                isToggling.delete(id);
+            }
+        }
+
+        function renderQR(id) {
+
+            const box = document.getElementById('qrBox');
+            if (!box) return;
+
+            const qr = qrCache[id];
+
+            if (qr) {
+
+                const qrUrl =
+                    `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qr)}&size=300x300`;
+
+                box.innerHTML = `
+                    <img
+                        src="${qrUrl}"
+                        class="rounded-3xl shadow-2xl border border-white/10"
+                        alt="QR Code"
+                    />
+                `;
+
+            } else {
+
+                box.innerHTML = `
+                    <div class="text-center">
+                        <div class="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 mx-auto flex items-center justify-center">
+                            <svg class="animate-spin h-5 w-5 text-slate-300" viewBox="0 0 24 24" fill="none">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                        </div>
+                        <p class="text-slate-400 font-bold mt-4">
+                            מייצר QR...
+                        </p>
+                    </div>
+                `;
+            }
+
+            refreshIcons();
+        }
+
+        async function openQR(id, name) {
+
+            currentId = String(id);
+            // Ensure we receive QR/status events for this business
+            joinBusinessRoom(id);
+
+                        waOnboard.businessId = Number(id);
+            waOnboard.businessName = String(name || '');
+            waOnboard.method = null;
+            waOnboard.phone = '';
+            waOnboard.pairingCode = null;
+            waOnboard.pairingPhone = null;
+            waOnboard.qrRequested = false;
+
+
+            document.getElementById('qrTitle').innerText = name;
+
+            document.getElementById('qrModal')
+                .classList.remove('hidden');
+
+                        updateWaStatusFromBiz(id);
+            setWaStep('method');
+
+            // Preserve the old "one click to QR" desktop experience.
+            // On mobile, user must choose a method (Pairing Code is recommended).
+            try {
+                const isDesktop = window.matchMedia && window.matchMedia('(min-width: 768px)').matches;
+                if (isDesktop) {
+                    waChooseMethod('qr');
+                }
+            } catch (_) {}
+
+
+            // Reset phone UI
+            try {
+                const errEl = document.getElementById('waPhoneError');
+                if (errEl) errEl.classList.add('hidden');
+                const input = document.getElementById('waPhoneInput');
+                if (input) input.value = '';
+
+                const form = document.getElementById('waPhoneForm');
+                const verify = document.getElementById('waPhoneVerify');
+                if (form && verify) {
+                    verify.classList.add('hidden');
+                    form.classList.remove('hidden');
+                }
+            } catch (_) {}
+
+                        // Ensure QR/pairing UI is reset
+            renderPairingPanel();
+
+            // Render placeholder QR box (will be filled once QR step begins)
+            renderQR(String(id));
+
+        }
+
+        function closeQR() {
+
+            if (!canCloseModal()) return;
+
+            document.getElementById('qrModal')
+                .classList.add('hidden');
+
+            currentId = null;
+
+            // reset onboarding state
+                        waOnboard.step = 'method';
+            waOnboard.method = null;
+            waOnboard.phone = '';
+            waOnboard.pairingCode = null;
+            waOnboard.pairingPhone = null;
+            waOnboard.businessId = null;
+            waOnboard.businessName = '';
+            waOnboard.qrRequested = false;
+            setWaStatusPill('pending');
+
+        }
+
+
+        function switchTab(tabId) {
+
+            document.querySelectorAll('.tab-content')
+                .forEach(t => t.classList.remove('active'));
+
+            document.querySelectorAll('.sidebar-item')
+                .forEach(b => b.classList.remove('active'));
+
+            document
+                .getElementById(`tab-${tabId}`)
+                .classList.add('active');
+
+                        document
+                .getElementById(`btn-${tabId}`)
+                .classList.add('active');
+
+            // Mobile nav active state
+            document.querySelectorAll('.mobile-nav-item').forEach(el => {
+                el.classList.remove('bg-blue-600', 'border-blue-500/30', 'shadow-lg', 'shadow-blue-500/20');
+                el.classList.add('bg-white/5', 'border-white/10');
+            });
+
+            const m = document.getElementById(`m-btn-${tabId}`);
+            if (m) {
+                m.classList.remove('bg-white/5', 'border-white/10');
+                m.classList.add('bg-blue-600', 'border-blue-500/30', 'shadow-lg', 'shadow-blue-500/20');
+            }
+
+                        document.getElementById('page-title').innerText =
+                tabId === 'biz'
+                    ? 'ניהול עסקים'
+                    : tabId === 'bookings'
+                        ? 'יומן תורים'
+                        : 'מרכז שיחות';
+
+            if (tabId === 'bookings') {
+                loadBookings();
+            }
+
+            if (tabId === 'chat') {
+                initChatUI();
+                refreshChat();
+            }
+
+
+            refreshIcons();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+
+            const form = document.getElementById('businessForm');
+
+            form.onsubmit = null;
+
+            form.removeEventListener(
+                'submit',
+                handleBusinessSubmit
+            );
+
+            form.addEventListener(
+                'submit',
+                handleBusinessSubmit
+            );
+
+            document.addEventListener('keydown', e => {
+
+                if (e.key === 'Escape') {
+
+                    closeBusinessModal();
+                    closeDeleteModal();
+                    closeQR();
+                }
+            });
+
+            document.getElementById('businessModal')
+                .addEventListener('click', e => {
+
+                    if (e.target.id === 'businessModal') {
+                        closeBusinessModal();
+                    }
+                });
+
+            document.getElementById('deleteModal')
+                .addEventListener('click', e => {
+
+                    if (e.target.id === 'deleteModal') {
+                        closeDeleteModal();
+                    }
+                });
+
+                        document.getElementById('qrModal')
+                .addEventListener('click', e => {
+
+                    if (e.target.id === 'qrModal') {
+                        closeQR();
+                    }
+                });
+
+            // Initial mobile nav highlight (biz)
+            try {
+                const m = document.getElementById('m-btn-biz');
+                if (m) {
+                    m.classList.remove('bg-white/5', 'border-white/10');
+                    m.classList.add('bg-blue-600', 'border-blue-500/30', 'shadow-lg', 'shadow-blue-500/20');
+                }
+            } catch (_) {}
+        });
+
+        initSocket();
+        loadBusinesses();
+
+    </script>
+
+</body>
+</html>
