@@ -1,20 +1,3 @@
-הנה קובץ מלא, מתוקן ויציב יותר ל־`/db/db.js`
-מוכן להעתקה מלאה בלי לשבור את המערכת שלך.
-
-הקוד כולל:
-
-* SQLite יציב יותר
-* מניעת SQLITE_BUSY
-* Indexes טובים יותר
-* Dedup table להודעות
-* Cleanup יציב
-* Async wrappers
-* Migrations בטוחות
-* WAL mode
-* Foreign keys
-* Retry-safe structure
-
-```javascript
 // /db/db.js
 
 const sqlite3 = require("sqlite3").verbose();
@@ -422,4 +405,3 @@ startChatRetentionCleanup();
 module.exports = db;
 module.exports.dbAsync = dbAsync;
 module.exports.DEFAULT_SETTINGS = DEFAULT_SETTINGS;
-```
