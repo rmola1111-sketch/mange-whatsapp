@@ -1,2 +1,3 @@
-2026/05/11-20:37:23.660 1e5c Creating DB C:\whatsapp-saas\backend\.wwebjs_auth\session-business_8\Default\Site Characteristics Database since it was missing.
-2026/05/11-20:37:23.671 1e5c Reusing MANIFEST C:\whatsapp-saas\backend\.wwebjs_auth\session-business_8\Default\Site Characteristics Database/MANIFEST-000001
+2026/05/12-01:23:59.318 6424 Reusing MANIFEST C:\whatsapp-saas\backend\.wwebjs_auth\session-business_8\Default\Site Characteristics Database/MANIFEST-000001
+2026/05/12-01:23:59.319 6424 Recovering log #3
+2026/05/12-01:23:59.320 6424 Reusing old log C:\whatsapp-saas\backend\.wwebjs_auth\session-business_8\Default\Site Characteristics Database/000003.log 
